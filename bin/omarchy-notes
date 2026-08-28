@@ -88,12 +88,12 @@ save_nvim() {
     wait_for_socket 30 || return 1
   fi
 
-  # stopinsert + Esc covers insert and visual; :write persists in normal mode too.
+  # stopinsert + Esc covers insert and visual; :update skips disk when unchanged.
   nvim_expr 'luaeval("vim.cmd.stopinsert()")' || true
   nvim_remote $'\x1b'
   sleep 0.05
-  nvim_expr 'luaeval("vim.cmd.write()")' \
-    || nvim_remote ':write\r'
+  nvim_expr 'luaeval("vim.cmd.update()")' \
+    || nvim_remote ':up\r'
   sleep 0.1
 }
 
