@@ -9,7 +9,7 @@ Requires: Omarchy (or Hyprland + `omarchy-launch-tui`), `nvim`, `jq`, `hyprctl`.
 - **Toggle** (`omarchy-notes toggle`): open new note / hide (save, keep nvim alive) / resume in insert mode
 - **Finish** (`omarchy-notes finish`): save, quit nvim, close panel; next toggle starts a fresh note
 
-Default keys (change in `~/.config/hypr/bindings.lua`): SUPER+BACKSPACE toggle, SUPER+CTRL+BACKSPACE finish.
+Default keys (change in `~/.config/hypr/bindings.lua`): SUPER+' toggle, SUPER+CTRL+' finish.
 
 ## Install
 
@@ -38,7 +38,7 @@ Install copies the app to `~/.local/share/omarchy-notes/` and writes Hypr loader
 In `~/.config/hypr/bindings.lua`:
 
 ```lua
-hl.unbind("SUPER + BACKSPACE", "Toggle notes panel")
+hl.unbind("SUPER + APOSTROPHE", "Toggle notes panel")
 hl.bind("SUPER + F12", hl.dsp.exec_cmd("omarchy-notes toggle"), {
   description = "Toggle notes panel",
 })

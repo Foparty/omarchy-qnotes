@@ -43,25 +43,14 @@ hl.on("monitor.focused", fit)
 -- restored for the agent scratchpad (SUPER+grave).
 
 -- Default keybindings. Override in ~/.config/hypr/bindings.lua (loaded after this file):
---   hl.unbind("SUPER + BACKSPACE", "Toggle notes panel")
+--   hl.unbind("SUPER + APOSTROPHE", "Toggle notes panel")
 --   hl.bind("SUPER + F12", hl.dsp.exec_cmd("omarchy-notes toggle"), {
 --     description = "Toggle notes panel",
 --   })
 
-hl.unbind(
-  "SUPER + BACKSPACE",
-  "Toggle window transparency",
-  "omarchy-hyprland-window-transparency-toggle"
-)
-hl.unbind(
-  "SUPER + CTRL + BACKSPACE",
-  "Toggle single-window square aspect",
-  "omarchy-hyprland-window-single-square-aspect-toggle"
-)
-
-hl.bind("SUPER + BACKSPACE", hl.dsp.exec_cmd("omarchy-notes toggle"), {
+hl.bind("SUPER + APOSTROPHE", hl.dsp.exec_cmd("omarchy-notes toggle"), {
   description = "Toggle notes panel",
 })
-hl.bind("SUPER + CTRL + BACKSPACE", hl.dsp.exec_cmd("omarchy-notes finish"), {
+hl.bind("SUPER + CTRL + APOSTROPHE", hl.dsp.exec_cmd("omarchy-notes finish"), {
   description = "Save notes and close session (next open = new note)",
 })
