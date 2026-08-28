@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "fo.quicknote",
+  "name": "Quicknote",
+  "version": "2.1.0",
+  "author": "Fo",
+  "description": "Bar launcher for omarchy-notes (requires omarchy-notes install)",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Quicknote",
+    "description": "Toggle omarchy-notes panel (see keybindings)",
+    "category": "Productivity",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

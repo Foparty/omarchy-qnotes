@@ -1,0 +1,218 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NOTES_DIR="${HOME}/notes"
+STATE_DIR="${HOME}/.local/state/omarchy"
+LISTEN_SOCK="${STATE_DIR}/notes-nvim.sock"
+LAST_NOTE="${STATE_DIR}/last-note"
+APP_ID="org.omarchy.notes"
+WORKSPACE="special:notes"
+
+mkdir -p "${NOTES_DIR}" "${STATE_DIR}"
+
+dispatch_lua() {
+  hyprctl dispatch "$1" >/dev/null 2>&1
+}
+
+eval_lua() {
+  hyprctl eval "$1" >/dev/null 2>&1
+}
+
+toggle_special() {
+  dispatch_lua 'hl.dsp.workspace.toggle_special("notes")'
+}
+
+set_notes_animations() {
+  eval_lua 'hl.animation({ leaf = "specialWorkspaceIn", enabled = true, speed = 3, bezier = "easeOutQuint", style = "slide bottom" })'
+  eval_lua 'hl.animation({ leaf = "specialWorkspaceOut", enabled = true, speed = 2, bezier = "easeInOutCubic", style = "slide top" })'
+}
+
+set_scratchpad_animations() {
+  eval_lua 'hl.animation({ leaf = "specialWorkspaceIn", enabled = true, speed = 3, bezier = "easeOutQuint", style = "slide top" })'
+  eval_lua 'hl.animation({ leaf = "specialWorkspaceOut", enabled = true, speed = 2, bezier = "easeInOutCubic", style = "slide bottom" })'
+}
+
+nvim_server() {
+  printf '%s' "${LISTEN_SOCK}"
+}
+
+nvim_server_ready() {
+  [[ -S "${LISTEN_SOCK}" ]]
+}
+
+nvim_expr() {
+  local expr="$1"
+  if ! nvim_server_ready; then
+    return 1
+  fi
+  nvim --server "$(nvim_server)" --remote-expr "${expr}" 2>/dev/null
+}
+
+nvim_remote() {
+  local keys="$1"
+  if nvim_server_ready; then
+    nvim --server "$(nvim_server)" --remote-send "${keys}" 2>/dev/null || true
+  fi
+}
+
+notes_visible() {
+  local out
+  out="$(hyprctl repl 'return hl.get_active_special_workspace()' 2>/dev/null | tail -1 || true)"
+  [[ "${out}" == *"special:notes"* ]]
+}
+
+notes_client_exists() {
+  hyprctl clients -j 2>/dev/null | jq -e --arg ws "${WORKSPACE}" '.[] | select(.workspace.name == $ws)' >/dev/null 2>&1
+}
+
+notes_client_address() {
+  hyprctl clients -j 2>/dev/null | jq -r --arg ws "${WORKSPACE}" '.[] | select(.workspace.name == $ws) | .address' | head -1
+}
+
+notes_session_alive() {
+  [[ -S "${LISTEN_SOCK}" ]] || notes_client_exists
+}
+
+wait_for_socket() {
+  local tries="${1:-50}"
+  while (( tries > 0 )); do
+    [[ -S "${LISTEN_SOCK}" ]] && return 0
+    sleep 0.1
+    tries=$((tries - 1))
+  done
+  return 1
+}
+
+save_nvim() {
+  if ! nvim_server_ready; then
+    wait_for_socket 30 || return 1
+  fi
+
+  # stopinsert + Esc covers insert and visual; :write persists in normal mode too.
+  nvim_expr 'luaeval("vim.cmd.stopinsert()")' || true
+  nvim_remote $'\x1b'
+  sleep 0.05
+  nvim_expr 'luaeval("vim.cmd.write()")' \
+    || nvim_remote ':write\r'
+  sleep 0.1
+}
+
+enter_insert_resume() {
+  if ! nvim_server_ready; then
+    wait_for_socket 30 || return 1
+  fi
+
+  sleep 0.15
+  nvim_expr 'luaeval("vim.cmd.stopinsert()")' || true
+  nvim_remote $'\x1b'
+  sleep 0.05
+  nvim_remote 'G'
+  sleep 0.05
+  nvim_remote 'A'
+  sleep 0.05
+}
+
+enter_insert_new() {
+  wait_for_socket 80 || return 1
+  sleep 0.2
+  nvim_expr 'luaeval("vim.cmd.startinsert()")' \
+    || nvim_remote 'i'
+  sleep 0.04
+}
+
+quit_nvim() {
+  if ! nvim_server_ready; then
+    return 0
+  fi
+
+  nvim_expr 'luaeval("vim.cmd.stopinsert()")' || true
+  nvim_remote $'\x1b'
+  sleep 0.04
+  nvim_expr 'luaeval("vim.cmd.wqa()")' \
+    || nvim_remote ':wqa\r'
+  sleep 0.15
+}
+
+new_note_path() {
+  printf '%s/note-%s.md' "${NOTES_DIR}" "$(date +%Y%m%d-%H%M%S)"
+}
+
+cmd_launch() {
+  rm -f "${LISTEN_SOCK}"
+
+  local launcher
+  launcher="$(readlink -f "${BASH_SOURCE[0]}")"
+  launcher="$(dirname "${launcher}")/omarchy-notes-launch.sh"
+
+  exec omarchy-launch-tui --app-id="${APP_ID}" "${launcher}"
+}
+
+cmd_toggle() {
+  if notes_visible; then
+    set_notes_animations
+    save_nvim
+    toggle_special
+    set_scratchpad_animations
+    return 0
+  fi
+
+  set_notes_animations
+  local resume=false
+  if notes_session_alive; then
+    resume=true
+  fi
+
+  toggle_special
+
+  if [[ "${resume}" == true ]]; then
+    sleep 0.08
+    enter_insert_resume
+  else
+    enter_insert_new
+  fi
+}
+
+cmd_finish() {
+  if notes_session_alive; then
+    set_notes_animations
+    save_nvim
+    quit_nvim
+  fi
+
+  local addr
+  addr="$(notes_client_address)"
+  if [[ -n "${addr}" && "${addr}" != "null" ]]; then
+    dispatch_lua "hl.dsp.window.close({ window = \"address:${addr}\" })"
+  fi
+
+  rm -f "${LISTEN_SOCK}"
+
+  if notes_visible; then
+    toggle_special
+  fi
+
+  set_scratchpad_animations
+}
+
+usage() {
+  cat <<'USAGE'
+Usage: omarchy-notes <launch|toggle|finish>
+
+  launch  Spawn nvim in ~/notes (Hyprland seed for a new session)
+  toggle  Open/hide notes panel; hide saves and keeps nvim alive
+  finish  Save, quit nvim, and close the panel (next toggle = new note)
+USAGE
+}
+
+main="${1:-toggle}"
+case "${main}" in
+  launch) cmd_launch ;;
+  toggle) cmd_toggle ;;
+  finish) cmd_finish ;;
+  -h|--help|help) usage ;;
+  *)
+    echo "omarchy-notes: unknown command: ${main}" >&2
+    usage >&2
+    exit 1
+    ;;
+esac
