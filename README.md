@@ -14,8 +14,8 @@ Default keys (change in `~/.config/hypr/bindings.lua`): SUPER+BACKSPACE toggle, 
 ## Install
 
 ```bash
-git clone <this-repo> ~/Documents/omarchy-notes
-cd ~/Documents/omarchy-notes
+git clone <this-repo> omarchy-notes
+cd omarchy-notes
 chmod +x install.sh bin/omarchy-notes
 ./install.sh
 ```
