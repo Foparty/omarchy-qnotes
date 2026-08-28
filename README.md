@@ -1,6 +1,6 @@
 # omarchy-notes
 
-[](/preview.png)
+![preview](/preview.png)
 
 Bottom nvim scratchpad for [Omarchy](https://github.com/basecamp/omarchy) / Hyprland. Quick notes in `~/notes` with save-on-hide and session resume.
 
