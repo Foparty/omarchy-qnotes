@@ -1,4 +1,4 @@
-# omarchy-notes
+# Omarchy-notes (quake style)
 
 ![preview](/preview.png)
 
