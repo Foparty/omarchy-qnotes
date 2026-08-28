@@ -20,17 +20,18 @@ chmod +x install.sh bin/omarchy-notes
 ./install.sh
 ```
 
-That symlinks the command, writes Hypr loaders, patches `hyprland.lua`, and reloads Hyprland.
+That copies the app to `~/.local/share/omarchy-notes/`, symlinks the command, writes Hypr loaders, patches `hyprland.lua`, and reloads Hyprland.
+
+The git clone is only for running `install.sh`. After install, nothing in `~/.config/hypr` points at your clone path.
 
 ## Trust / audit
 
 Before running `install.sh`, review:
 
 - `bin/omarchy-notes` — single bash script (~200 lines)
-- `hypr/qnotes.lua` — Hyprland workspace rules (~45 lines)
-- `hypr/bindings.example.lua` — default keybinds (~25 lines)
+- `hypr/qnotes.lua` — Hyprland workspace rules and default keybinds (~70 lines)
 
-Install symlinks the binary, writes two loader files in `~/.config/hypr/`, and patches `hyprland.lua` (insert-only, idempotent). Review the Python block in `install.sh` if you want to see exactly how the patch works.
+Install copies the app to `~/.local/share/omarchy-notes/` and writes Hypr loaders that point there (never at the git clone path).
 
 ## Customize keybindings
 

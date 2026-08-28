@@ -2,30 +2,36 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+install_root="${HOME}/.local/share/omarchy-notes"
 local_bin="${HOME}/.local/bin"
 hypr_config="${HOME}/.config/hypr"
 hyprland_lua="${hypr_config}/hyprland.lua"
 
 echo "omarchy-notes install"
-echo "  repo: ${repo_root}"
+echo "  from: ${repo_root}"
+echo "  to:   ${install_root}"
 echo
 
-mkdir -p "${local_bin}" "${hypr_config}"
+mkdir -p "${install_root}" "${local_bin}" "${hypr_config}"
 
-ln -sf "${repo_root}/bin/omarchy-notes" "${local_bin}/omarchy-notes"
-echo "linked: ${local_bin}/omarchy-notes -> ${repo_root}/bin/omarchy-notes"
+rm -rf "${install_root}/bin" "${install_root}/hypr"
+cp -a "${repo_root}/bin" "${repo_root}/hypr" "${install_root}/"
+chmod +x "${install_root}/bin/"*
+echo "installed app files -> ${install_root}"
 
-cat > "${hypr_config}/qnotes.lua" <<EOF
--- Loader for omarchy-notes workspace rules.
-dofile("${repo_root}/hypr/qnotes.lua")
+ln -sf "${install_root}/bin/omarchy-notes" "${local_bin}/omarchy-notes"
+echo "linked: ${local_bin}/omarchy-notes"
+
+cat > "${hypr_config}/qnotes.lua" <<'EOF'
+-- omarchy-notes workspace rules and default keybinds (~/.local/share/omarchy-notes).
+dofile((os.getenv("HOME") or "") .. "/.local/share/omarchy-notes/hypr/qnotes.lua")
 EOF
 echo "wrote:  ${hypr_config}/qnotes.lua"
 
-cat > "${hypr_config}/notes-bindings.lua" <<EOF
--- Default omarchy-notes keybindings. Override in hypr/bindings.lua.
-dofile("${repo_root}/hypr/bindings.example.lua")
-EOF
-echo "wrote:  ${hypr_config}/notes-bindings.lua"
+if [[ -f "${hypr_config}/notes-bindings.lua" ]]; then
+  rm -f "${hypr_config}/notes-bindings.lua"
+  echo "removed legacy ${hypr_config}/notes-bindings.lua"
+fi
 
 patch_hyprland_lua() {
   python3 - "${hyprland_lua}" <<'PY'
@@ -33,48 +39,45 @@ import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
-block = [
-    'require("hypr.qnotes")',
-    'require("hypr.notes-bindings")',
-]
+qnotes = 'require("hypr.qnotes")'
+legacy = 'require("hypr.notes-bindings")'
 
 if not path.exists():
-    print(f"skip:   {path} not found — create it and add the require lines manually")
+    print(f"skip:   {path} not found — create it and add {qnotes} before require(\"hypr.bindings\")")
     sys.exit(0)
 
 text = path.read_text()
 lines = text.splitlines(keepends=True)
 
-if all(entry in text for entry in block):
-    bindings_idx = next((i for i, ln in enumerate(lines) if 'require("hypr.bindings")' in ln), None)
-    notes_idx = next((i for i, ln in enumerate(lines) if 'require("hypr.notes-bindings")' in ln), None)
-    if bindings_idx is not None and notes_idx is not None and notes_idx > bindings_idx:
-        print(f"warn:   {path} loads notes-bindings AFTER bindings — overrides may not work")
-        print("        move both require lines above require(\"hypr.bindings\")")
+filtered = [ln for ln in lines if legacy not in ln]
+
+if qnotes in text:
+    bindings_idx = next((i for i, ln in enumerate(filtered) if 'require("hypr.bindings")' in ln), None)
+    qnotes_idx = next((i for i, ln in enumerate(filtered) if qnotes in ln), None)
+    if bindings_idx is not None and qnotes_idx is not None and qnotes_idx > bindings_idx:
+        print(f"warn:   {path} loads qnotes AFTER bindings — overrides may not work")
+        print("        move require(\"hypr.qnotes\") above require(\"hypr.bindings\")")
+    elif legacy in text:
+        path.write_text("".join(filtered))
+        print(f"patched: {path} (removed legacy notes-bindings require)")
     else:
-        print(f"ok:     {path} already has omarchy-notes requires")
+        print(f"ok:     {path} already has {qnotes}")
     sys.exit(0)
 
-# Drop partial lines so we can insert a clean pair once.
-filtered = [ln for ln in lines if not any(entry in ln for entry in block)]
 insert_at = next(
     (i for i, ln in enumerate(filtered) if 'require("hypr.bindings")' in ln),
     next((i for i, ln in enumerate(filtered) if 'require("hypr.looknfeel")' in ln), len(filtered)),
 )
 
 indent = "  "
-for i, ln in enumerate(filtered):
+for ln in filtered:
     if ln.strip().startswith("require("):
         indent = ln[: len(ln) - len(ln.lstrip())]
         break
 
-new_lines = (
-    filtered[:insert_at]
-    + [f"{indent}{entry}\n" for entry in block]
-    + filtered[insert_at:]
-)
+new_lines = filtered[:insert_at] + [f"{indent}{qnotes}\n"] + filtered[insert_at:]
 path.write_text("".join(new_lines))
-print(f"patched: {path} (inserted omarchy-notes requires before bindings)")
+print(f"patched: {path} (inserted {qnotes} before bindings)")
 PY
 }
 
@@ -85,5 +88,6 @@ if command -v hyprctl >/dev/null 2>&1; then
 fi
 
 echo
-echo "Done. Toggle with your keybind (default SUPER+BACKSPACE)."
-echo "Guide: ${repo_root}/README.md"
+echo "Done. App lives in ${install_root}"
+echo "Hypr loader: ${hypr_config}/qnotes.lua"
+echo "Re-run ./install.sh after upgrading the git clone to refresh installed files."
