@@ -1,5 +1,7 @@
 # omarchy-notes
 
+[](/preview.png)
+
 Bottom nvim scratchpad for [Omarchy](https://github.com/basecamp/omarchy) / Hyprland. Quick notes in `~/notes` with save-on-hide and session resume.
 
 Requires: Omarchy (or Hyprland + `omarchy-launch-tui`), `nvim`, `jq`, `hyprctl`.
