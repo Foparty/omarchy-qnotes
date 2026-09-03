@@ -21,9 +21,26 @@ sanitize_name() {
 default="$(date +note-%Y%m%d-%H%M%S)"
 name=""
 
+prompt_name() {
+  # Ctrl+C / SIGINT cancel the new note (close the panel).
+  trap 'printf "\nCanceled.\n"; exit 130' INT
+
+  printf '\n'
+  printf '  New note\n'
+  printf '  ────────\n'
+  printf '  Enter a name, or press Enter for %s\n' "${default}"
+  printf '  Ctrl+C to cancel\n'
+  printf '\n'
+  printf '  Name: '
+  if ! read -e -r name </dev/tty; then
+    printf '\nCanceled.\n'
+    exit 130
+  fi
+  trap - INT
+}
+
 if [[ -t 0 ]] || [[ -r /dev/tty ]]; then
-  printf '\nNote name [%s]: ' "${default}"
-  read -e -r name </dev/tty || true
+  prompt_name
 fi
 
 name="${name:-${default}}"
