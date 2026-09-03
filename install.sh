@@ -16,7 +16,9 @@ mkdir -p "${install_root}" "${local_bin}" "${hypr_config}"
 
 rm -rf "${install_root}/bin" "${install_root}/hypr"
 cp -a "${repo_root}/bin" "${repo_root}/hypr" "${install_root}/"
-chmod +x "${install_root}/bin/"*
+cp -a "${repo_root}/config.example" "${install_root}/config.example"
+cp -a "${repo_root}/VERSION" "${install_root}/VERSION"
+chmod +x "${install_root}/bin/"omarchy-notes "${install_root}/bin/"omarchy-notes-launch.sh
 echo "installed app files -> ${install_root}"
 
 ln -sf "${install_root}/bin/omarchy-notes" "${local_bin}/omarchy-notes"

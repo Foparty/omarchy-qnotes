@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NOTES_DIR="${HOME}/notes"
+# Resolve through ~/.local/bin/omarchy-notes so the helper lives next to the real script.
+# shellcheck source=omarchy-notes-config.sh
+source "$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)/omarchy-notes-config.sh"
+omarchy_notes_load_config
+
 STATE_DIR="${HOME}/.local/state/omarchy"
 LISTEN_SOCK="${STATE_DIR}/notes-nvim.sock"
 LAST_NOTE="${STATE_DIR}/last-note"
@@ -83,18 +87,41 @@ wait_for_socket() {
   return 1
 }
 
+leave_insert() {
+  # stopinsert + Esc covers insert and visual.
+  nvim_expr 'luaeval("vim.cmd.stopinsert()")' || true
+  nvim_remote $'\x1b'
+  sleep 0.05
+}
+
+write_if_changed() {
+  nvim_expr 'luaeval("vim.cmd.update()")' \
+    || nvim_remote ':up\r'
+  sleep 0.1
+}
+
 save_nvim() {
   if ! nvim_server_ready; then
     wait_for_socket 30 || return 1
   fi
+  leave_insert
+  write_if_changed
+}
 
-  # stopinsert + Esc covers insert and visual; :update skips disk when unchanged.
-  nvim_expr 'luaeval("vim.cmd.stopinsert()")' || true
-  nvim_remote $'\x1b'
-  sleep 0.05
-  nvim_expr 'luaeval("vim.cmd.update()")' \
-    || nvim_remote ':up\r'
-  sleep 0.1
+# Toggle hide: optional stopinsert / :update. Missing socket must not block hide.
+hide_nvim() {
+  if [[ "${EXIT_INSERT_ON_HIDE}" != 1 && "${SAVE_ON_HIDE}" != 1 ]]; then
+    return 0
+  fi
+  if ! nvim_server_ready; then
+    wait_for_socket 30 || return 0
+  fi
+  if [[ "${EXIT_INSERT_ON_HIDE}" == 1 ]]; then
+    leave_insert
+  fi
+  if [[ "${SAVE_ON_HIDE}" == 1 ]]; then
+    write_if_changed
+  fi
 }
 
 enter_insert_resume() {
@@ -147,10 +174,21 @@ cmd_launch() {
   exec omarchy-launch-tui --app-id="${APP_ID}" "${launcher}"
 }
 
+cmd_print_dir() {
+  printf '%s\n' "${NOTES_DIR}"
+}
+
+cmd_version() {
+  local root ver
+  root="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+  ver="$(tr -d '[:space:]' < "${root}/VERSION" 2>/dev/null || true)"
+  printf '%s\n' "${ver:-0.0.0}"
+}
+
 cmd_toggle() {
   if notes_visible; then
     set_notes_animations
-    save_nvim
+    hide_nvim
     toggle_special
     set_scratchpad_animations
     return 0
@@ -195,12 +233,14 @@ cmd_finish() {
 }
 
 usage() {
-  cat <<'USAGE'
-Usage: omarchy-notes <launch|toggle|finish>
+  cat <<USAGE
+Usage: omarchy-notes <launch|toggle|finish|print-dir|version>
 
-  launch  Spawn nvim in ~/notes (Hyprland seed for a new session)
-  toggle  Open/hide notes panel; hide saves and keeps nvim alive
-  finish  Save, quit nvim, and close the panel (next toggle = new note)
+  launch     Spawn nvim in ${NOTES_DIR} (Hyprland seed for a new session)
+  toggle     Open/hide notes panel; hide keeps nvim alive
+  finish     Save, quit nvim, and close the panel (next toggle = new note)
+  print-dir  Print the resolved notes directory
+  version    Print the app version
 USAGE
 }
 
@@ -209,6 +249,8 @@ case "${main}" in
   launch) cmd_launch ;;
   toggle) cmd_toggle ;;
   finish) cmd_finish ;;
+  print-dir) cmd_print_dir ;;
+  version|--version|-V) cmd_version ;;
   -h|--help|help) usage ;;
   *)
     echo "omarchy-notes: unknown command: ${main}" >&2

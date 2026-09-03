@@ -2,7 +2,10 @@
 # Runs inside the notes terminal before nvim starts (new note only).
 set -euo pipefail
 
-NOTES_DIR="${HOME}/notes"
+# shellcheck source=omarchy-notes-config.sh
+source "$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)/omarchy-notes-config.sh"
+omarchy_notes_load_config
+
 STATE_DIR="${HOME}/.local/state/omarchy"
 LISTEN_SOCK="${STATE_DIR}/notes-nvim.sock"
 LAST_NOTE="${STATE_DIR}/last-note"

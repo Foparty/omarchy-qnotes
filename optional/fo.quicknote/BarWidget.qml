@@ -8,7 +8,7 @@ BarWidget {
   moduleName: "fo.quicknote"
 
   readonly property string icon: ""
-  readonly property string notesDir: (Quickshell.env("HOME") || "") + "/notes"
+  readonly property string notesDirFallback: (Quickshell.env("HOME") || "") + "/notes"
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -23,8 +23,11 @@ BarWidget {
 
     onPressed: function(b) {
       if (!root.bar) return
-      if (b === Qt.RightButton) root.bar.run("xdg-open " + Util.shellQuote(root.notesDir))
-      else root.bar.run("omarchy-notes toggle")
+      if (b === Qt.RightButton) {
+        root.bar.run("xdg-open \"$(omarchy-notes print-dir 2>/dev/null || printf %s " + Util.shellQuote(root.notesDirFallback) + ")\"")
+      } else {
+        root.bar.run("omarchy-notes toggle")
+      }
     }
   }
 }

@@ -1,15 +1,17 @@
 # Omarchy-notes (quake style)
 
+Version **0.2.0**.
+
 ![preview](/preview.png)
 
-Bottom nvim scratchpad for [Omarchy](https://github.com/basecamp/omarchy) / Hyprland. Quick notes in `~/notes` with save-on-hide and session resume.
+Bottom nvim scratchpad for [Omarchy](https://github.com/basecamp/omarchy) / Hyprland. Quick notes (default `~/notes`) with optional save-on-hide and session resume.
 
 Requires: Omarchy (or Hyprland + `omarchy-launch-tui`), `nvim`, `jq`, `hyprctl`.
 
 ## Behavior
 
-- **Toggle** (`omarchy-notes toggle`): open new note / hide (save, keep nvim alive) / resume in insert mode
-- **Finish** (`omarchy-notes finish`): save, quit nvim, close panel; next toggle starts a fresh note
+- **Toggle** (`omarchy-notes toggle`): open new note / hide (keep nvim alive) / resume in insert mode. Hide can save and/or leave insert mode (see config).
+- **Finish** (`omarchy-notes finish`): always save, quit nvim, close panel; next toggle starts a fresh note
 
 Default keys (change in `~/.config/hypr/bindings.lua`): SUPER+' toggle, SUPER+CTRL+' finish.
 
@@ -30,8 +32,9 @@ The git clone is only for running `install.sh`. After install, nothing in `~/.co
 
 Before running `install.sh`, review:
 
-- `bin/omarchy-notes` — single bash script (~200 lines)
-- `hypr/qnotes.lua` — Hyprland workspace rules and default keybinds (~70 lines)
+- `bin/omarchy-notes` — bash CLI (toggle / finish / launch)
+- `bin/omarchy-notes-config.sh` — config file parser
+- `hypr/qnotes.lua` — Hyprland workspace rules and default keybinds
 
 Install copies the app to `~/.local/share/omarchy-notes/` and writes Hypr loaders that point there (never at the git clone path).
 
@@ -45,6 +48,22 @@ hl.bind("SUPER + F12", hl.dsp.exec_cmd("omarchy-notes toggle"), {
   description = "Toggle notes panel",
 })
 ```
+
+## Config
+
+Copy `config.example` to `~/.config/omarchy-notes/config` (install never overwrites that file):
+
+```
+notes_dir=~/notes
+exit_insert_on_hide=true
+save_on_hide=true
+```
+
+`notes_dir` is where new notes are created. `exit_insert_on_hide` and `save_on_hide` apply to **toggle hide only**. Finish still always writes and quits.
+
+Environment overrides (win over the file): `OMARCHY_NOTES_DIR`, `OMARCHY_NOTES_EXIT_INSERT_ON_HIDE`, `OMARCHY_NOTES_SAVE_ON_HIDE`.
+
+`omarchy-notes print-dir` prints the resolved notes folder.
 
 ## Optional bar icon
 

@@ -1,0 +1,9 @@
+# Copy to ~/.config/omarchy-notes/config and edit.
+# Unknown keys are ignored. Do not put shell commands here.
+
+# Folder for new notes (default: ~/notes)
+notes_dir=~/notes
+
+# On toggle hide only (finish always saves and quits):
+exit_insert_on_hide=true
+save_on_hide=true
